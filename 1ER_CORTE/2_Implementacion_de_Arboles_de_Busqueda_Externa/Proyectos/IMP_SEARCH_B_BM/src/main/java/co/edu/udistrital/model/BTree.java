@@ -15,7 +15,7 @@ public class BTree {
     }
 
     /**
-     * clase auxiliar interna para capturar la clave que sube y el nuevo hermano derecho.
+     * para capturar la clave que sube y el nuevo hermano derecho.
      */
     private class SplitResult {
         int promotedKey;
@@ -49,7 +49,8 @@ public class BTree {
     }
 
     /**
-     * inserta una nueva clave insertando primero y dividiendo si supera el orden.
+     * inserta una nueva clave insertando primero y dividiendo si supera el 
+     * orden.
      */
     public void insert(int key) {
         SplitResult result = insertRec(root, key);
@@ -88,8 +89,8 @@ public class BTree {
     }
 
     /**
-     * divide un nodo lleno. ante un numero par de claves, sube la de la izquierda
-     * dejando el nodo derecho mas cargado.
+     * divide un nodo lleno. Si es un numero par de claves, sube la de 
+     * la izquierda dejando el nodo derecho mas cargado.
      */
     private SplitResult splitNode(BTreeNode node) {
         int mid = (node.keys.size() - 1) / 2;
@@ -188,7 +189,8 @@ public class BTree {
     private void fillChild(BTreeNode node, int idx) {
         if (idx != 0 && node.children.get(idx - 1).keys.size() >= minDegree) {
             borrowFromPrev(node, idx);
-        } else if (idx != node.keys.size() && node.children.get(idx + 1).keys.size() >= minDegree) {
+        } else if (idx != node.keys.size() && 
+                node.children.get(idx + 1).keys.size() >= minDegree) {
             borrowFromNext(node, idx);
         } else {
             if (idx != node.keys.size()) mergeChildren(node, idx);
@@ -201,7 +203,8 @@ public class BTree {
         BTreeNode sibling = node.children.get(idx - 1);
         child.keys.add(0, node.keys.get(idx - 1));
         if (!child.isLeaf) {
-            child.children.add(0, sibling.children.remove(sibling.children.size() - 1));
+            child.children.add(0, 
+                    sibling.children.remove(sibling.children.size() - 1));
         }
         node.keys.set(idx - 1, sibling.keys.remove(sibling.keys.size() - 1));
     }
