@@ -1,22 +1,19 @@
 package co.edu.udistrital.model;
 
 /**
- * implementacion de arbol b con insercion exacta y eliminacion.
+ * implementacion de arbol b generalizado para cualquier orden.
  */
 public class BTree {
     public BTreeNode root;
     private int order;
-    private int minDegree;
+    private int minKeys;
 
     public BTree(int order) {
         this.order = order;
-        this.minDegree = (order + 1) / 2;
+        this.minKeys = (order - 1) / 2; 
         this.root = new BTreeNode(true);
     }
 
-    /**
-     * para capturar la clave que sube y el nuevo hermano derecho.
-     */
     private class SplitResult {
         int promotedKey;
         BTreeNode newNode;
@@ -27,9 +24,6 @@ public class BTree {
         }
     }
 
-    /**
-     * busca una clave en el arbol.
-     */
     public boolean search(int key) {
         return searchNode(root, key);
     }
@@ -48,10 +42,6 @@ public class BTree {
         return searchNode(node.children.get(idx), key);
     }
 
-    /**
-     * inserta una nueva clave insertando primero y dividiendo si supera el 
-     * orden.
-     */
     public void insert(int key) {
         SplitResult result = insertRec(root, key);
         if (result != null) {
@@ -71,6 +61,7 @@ public class BTree {
 
         if (node.isLeaf) {
             node.keys.add(idx, key);
+            // Si el nodo alcanza la capacidad maxima (order), se divide
             if (node.keys.size() == order) {
                 return splitNode(node);
             }
@@ -88,22 +79,18 @@ public class BTree {
         }
     }
 
-    /**
-     * divide un nodo lleno. Si es un numero par de claves, sube la de 
-     * la izquierda dejando el nodo derecho mas cargado.
-     */
     private SplitResult splitNode(BTreeNode node) {
+        // Al calcular el punto medio dinámicamente, sirve para ordenes pares 
+        // e impares
         int mid = (node.keys.size() - 1) / 2;
         int promotedKey = node.keys.get(mid);
 
         BTreeNode newNode = new BTreeNode(node.isLeaf);
 
-        // traspasa las claves a la derecha del punto medio
         for (int i = mid + 1; i < node.keys.size(); i++) {
             newNode.keys.add(node.keys.get(i));
         }
 
-        // traspasa los hijos correspondientes si no es hoja
         if (!node.isLeaf) {
             for (int i = mid + 1; i < node.children.size(); i++) {
                 newNode.children.add(node.children.get(i));
@@ -111,122 +98,133 @@ public class BTree {
             node.children.subList(mid + 1, node.children.size()).clear();
         }
 
-        // remueve del nodo original la clave promovida y las de la derecha
         node.keys.subList(mid, node.keys.size()).clear();
 
         return new SplitResult(promotedKey, newNode);
     }
 
     /**
-     * elimina una clave del arbol previniendo underflow.
+     * eliminacion ascendente
      */
     public void delete(int key) {
-        if (root == null) return;
-        deleteKey(root, key);
-        if (root.keys.size() == 0) {
-            root = root.isLeaf ? null : root.children.get(0);
+        if (root == null || root.keys.isEmpty()) return;
+        
+        deleteRec(root, key);
+        
+        // Si la raíz se queda vacía y tiene hijos, el hijo pasa a ser la
+        // nueva raíz
+        if (root.keys.isEmpty() && !root.isLeaf && !root.children.isEmpty()) {
+            root = root.children.get(0);
         }
     }
 
-    private void deleteKey(BTreeNode node, int key) {
-        int idx = findKeyIndex(node, key);
+    private boolean deleteRec(BTreeNode node, int key) {
+        int idx = 0;
+        while (idx < node.keys.size() && key > node.keys.get(idx)) {
+            idx++;
+        }
+
+        // Caso 1: La clave esta en este nodo
         if (idx < node.keys.size() && node.keys.get(idx) == key) {
             if (node.isLeaf) {
                 node.keys.remove(idx);
+                return true;
             } else {
-                deleteInternal(node, idx);
-            }
-        } else {
-            if (node.isLeaf) return;
-            boolean isLast = (idx == node.keys.size());
-            if (node.children.get(idx).keys.size() < minDegree) {
-                fillChild(node, idx);
-            }
-            if (isLast && idx > node.keys.size()) {
-                deleteKey(node.children.get(idx - 1), key);
-            } else {
-                deleteKey(node.children.get(idx), key);
+                int pred = getPredecessor(node, idx);
+                node.keys.set(idx, pred);
+                deleteRec(node.children.get(idx), pred);
+                
+                // Chequeo contra el minKeys calculado
+                if (node.children.get(idx).keys.size() < minKeys) {
+                    fixUnderflow(node, idx);
+                }
+                return true;
             }
         }
-    }
 
-    private int findKeyIndex(BTreeNode node, int key) {
-        int idx = 0;
-        while (idx < node.keys.size() && node.keys.get(idx) < key) {
-            idx++;
+        // Caso 2: La clave no esta en este nodo
+        if (node.isLeaf) {
+            return false;
         }
-        return idx;
-    }
 
-    private void deleteInternal(BTreeNode node, int idx) {
-        int key = node.keys.get(idx);
-        if (node.children.get(idx).keys.size() >= minDegree) {
-            int pred = getPredecessor(node, idx);
-            node.keys.set(idx, pred);
-            deleteKey(node.children.get(idx), pred);
-        } else if (node.children.get(idx + 1).keys.size() >= minDegree) {
-            int succ = getSuccessor(node, idx);
-            node.keys.set(idx, succ);
-            deleteKey(node.children.get(idx + 1), succ);
-        } else {
-            mergeChildren(node, idx);
-            deleteKey(node.children.get(idx), key);
+        boolean deleted = deleteRec(node.children.get(idx), key);
+
+        // Si el hijo descendido queda por debajo del minimo calculado, 
+        // corregimos
+        if (node.children.get(idx).keys.size() < minKeys) {
+            fixUnderflow(node, idx);
         }
+
+        return deleted;
     }
 
     private int getPredecessor(BTreeNode node, int idx) {
         BTreeNode curr = node.children.get(idx);
-        while (!curr.isLeaf) curr = curr.children.get(curr.keys.size());
+        while (!curr.isLeaf) {
+            curr = curr.children.get(curr.keys.size());
+        }
         return curr.keys.get(curr.keys.size() - 1);
     }
 
-    private int getSuccessor(BTreeNode node, int idx) {
-        BTreeNode curr = node.children.get(idx + 1);
-        while (!curr.isLeaf) curr = curr.children.get(0);
-        return curr.keys.get(0);
-    }
-
-    private void fillChild(BTreeNode node, int idx) {
-        if (idx != 0 && node.children.get(idx - 1).keys.size() >= minDegree) {
-            borrowFromPrev(node, idx);
-        } else if (idx != node.keys.size() && 
-                node.children.get(idx + 1).keys.size() >= minDegree) {
-            borrowFromNext(node, idx);
-        } else {
-            if (idx != node.keys.size()) mergeChildren(node, idx);
-            else mergeChildren(node, idx - 1);
+    private void fixUnderflow(BTreeNode parent, int childIdx) {
+        // Intentar pedir prestado al hermano izquierdo
+        if (childIdx > 0 && parent.children.get(childIdx - 1).keys.size() 
+                > minKeys) {
+            borrowFromLeft(parent, childIdx);
+        } 
+        // Intentar pedir prestado al hermano derecho
+        else if (childIdx < parent.children.size() - 1 
+                && parent.children.get(childIdx + 1).keys.size() > minKeys) {
+            borrowFromRight(parent, childIdx);
+        } 
+        // Si ningún hermano puede prestar, se fusionan
+        else {
+            if (childIdx > 0) {
+                mergeNodes(parent, childIdx - 1);
+            } else {
+                mergeNodes(parent, childIdx);
+            }
         }
     }
 
-    private void borrowFromPrev(BTreeNode node, int idx) {
-        BTreeNode child = node.children.get(idx);
-        BTreeNode sibling = node.children.get(idx - 1);
-        child.keys.add(0, node.keys.get(idx - 1));
+    private void borrowFromLeft(BTreeNode parent, int childIdx) {
+        BTreeNode child = parent.children.get(childIdx);
+        BTreeNode leftSibling = parent.children.get(childIdx - 1);
+
+        child.keys.add(0, parent.keys.get(childIdx - 1));
+        parent.keys.set(childIdx - 1, 
+                leftSibling.keys.remove(leftSibling.keys.size() - 1));
+
         if (!child.isLeaf) {
             child.children.add(0, 
-                    sibling.children.remove(sibling.children.size() - 1));
+                    leftSibling.children.remove(leftSibling.children.size() 
+                            - 1));
         }
-        node.keys.set(idx - 1, sibling.keys.remove(sibling.keys.size() - 1));
     }
 
-    private void borrowFromNext(BTreeNode node, int idx) {
-        BTreeNode child = node.children.get(idx);
-        BTreeNode sibling = node.children.get(idx + 1);
-        child.keys.add(node.keys.get(idx));
+    private void borrowFromRight(BTreeNode parent, int childIdx) {
+        BTreeNode child = parent.children.get(childIdx);
+        BTreeNode rightSibling = parent.children.get(childIdx + 1);
+
+        child.keys.add(parent.keys.get(childIdx));
+        parent.keys.set(childIdx, rightSibling.keys.remove(0));
+
         if (!child.isLeaf) {
-            child.children.add(sibling.children.remove(0));
+            child.children.add(rightSibling.children.remove(0));
         }
-        node.keys.set(idx, sibling.keys.remove(0));
     }
 
-    private void mergeChildren(BTreeNode node, int idx) {
-        BTreeNode child = node.children.get(idx);
-        BTreeNode sibling = node.children.get(idx + 1);
-        child.keys.add(node.keys.remove(idx));
-        child.keys.addAll(sibling.keys);
-        if (!child.isLeaf) {
-            child.children.addAll(sibling.children);
+    private void mergeNodes(BTreeNode parent, int idx) {
+        BTreeNode left = parent.children.get(idx);
+        BTreeNode right = parent.children.get(idx + 1);
+
+        left.keys.add(parent.keys.remove(idx));
+        left.keys.addAll(right.keys);
+        
+        if (!left.isLeaf) {
+            left.children.addAll(right.children);
         }
-        node.children.remove(idx + 1);
+
+        parent.children.remove(idx + 1);
     }
 }

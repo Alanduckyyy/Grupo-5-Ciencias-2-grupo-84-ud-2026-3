@@ -57,7 +57,7 @@ public class TreeController {
                     view.drawBTree(bTree.root);
                     break;
                 case 5:
-                                        for (int key : data) {
+                    for (int key : data) {
                         view.showMessage("\n\nDato a insertar: "+ key);
                         bPlusTree.insert(key);
                         view.drawBPlusTree(bPlusTree.root);

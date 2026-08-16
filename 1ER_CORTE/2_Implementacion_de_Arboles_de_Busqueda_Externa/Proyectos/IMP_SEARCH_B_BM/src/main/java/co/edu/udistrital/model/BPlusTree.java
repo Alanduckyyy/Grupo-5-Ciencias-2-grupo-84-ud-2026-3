@@ -3,7 +3,7 @@ package co.edu.udistrital.model;
 import java.util.Collections;
 
 /**
- * arbol b+.
+ * arbol b+ 
  */
 public class BPlusTree {
     public BPlusNode root;
@@ -14,9 +14,6 @@ public class BPlusTree {
         this.root = new BPlusNode(true);
     }
 
-    /**
-     * split hacia arriba.
-     */
     private class SplitResult {
         public int promotedKey;
         public BPlusNode newNode;
@@ -72,7 +69,6 @@ public class BPlusTree {
         newLeaf.keys.addAll(leaf.keys.subList(mid, leaf.keys.size()));
         leaf.keys.subList(mid, leaf.keys.size()).clear();
         
-        // mantiene la lista enlazada
         newLeaf.nextLeaf = leaf.nextLeaf;
         leaf.nextLeaf = newLeaf;
         
@@ -96,17 +92,65 @@ public class BPlusTree {
     }
 
     /**
-     * eliminacionenfocado en la hoja.
+     * eliminacion
      */
     public void delete(int key) {
-        BPlusNode curr = root;
-        while (!curr.isLeaf) {
+        if (root == null) return;
+        deleteRec(root, key);
+        
+        /** Si la raiz se queda sin claves y tiene un solo hijo, 
+         *  se promueve ese hijo a raiz
+         */
+                while (!root.isLeaf && root.keys.isEmpty() 
+                        && !root.children.isEmpty()) {
+            root = root.children.get(0);
+        }
+    }
+
+    private void deleteRec(BPlusNode node, int key) {
+        if (node.isLeaf) {
+            node.keys.remove(Integer.valueOf(key));
+        } else {
             int idx = 0;
-            while (idx < curr.keys.size() && key >= curr.keys.get(idx)) {
+            while (idx < node.keys.size() && key >= node.keys.get(idx)) {
                 idx++;
             }
-            curr = curr.children.get(idx);
+            
+            if (idx >= node.children.size()) {
+                idx = node.children.size() - 1;
+            }
+
+            BPlusNode child = node.children.get(idx);
+            deleteRec(child, key);
+
+            // 1. Si la hoja queda vacia, y se elimina del padre
+            if (child.isLeaf && child.keys.isEmpty()) {
+                if (idx > 0) {
+                    node.children.get(idx - 1).nextLeaf = child.nextLeaf;
+                }
+                
+                node.children.remove(idx);
+                if (idx > 0 && idx - 1 < node.keys.size()) {
+                    node.keys.remove(idx - 1);
+                } else if (!node.keys.isEmpty()) {
+                    node.keys.remove(0);
+                }
+            } 
+            // 2. Si un nodo indice se quedo sin claves por perder su hoja,
+            // colapsa la envoltura conectando a su unico hijo con el nivel 
+            // superior
+            else if (!child.isLeaf && child.keys.isEmpty()) {
+                if (!child.children.isEmpty()) {
+                    node.children.set(idx, child.children.get(0));
+                } else {
+                    node.children.remove(idx);
+                    if (idx > 0 && idx - 1 < node.keys.size()) {
+                        node.keys.remove(idx - 1);
+                    } else if (!node.keys.isEmpty()) {
+                        node.keys.remove(0);
+                    }
+                }
+            }
         }
-        curr.keys.remove(Integer.valueOf(key));
     }
 }
