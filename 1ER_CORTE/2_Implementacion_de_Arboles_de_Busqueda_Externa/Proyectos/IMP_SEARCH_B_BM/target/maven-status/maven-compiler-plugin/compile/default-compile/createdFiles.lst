@@ -3,6 +3,7 @@ co\edu\udistrital\controller\TreeController.class
 co\edu\udistrital\model\BPlusTree.class
 co\edu\udistrital\controller\Main.class
 co\edu\udistrital\view\ConsoleView.class
+co\edu\udistrital\model\BTree$SplitResult.class
 co\edu\udistrital\model\BPlusTree$SplitResult.class
 co\edu\udistrital\model\BTree.class
 co\edu\udistrital\model\BPlusNode.class

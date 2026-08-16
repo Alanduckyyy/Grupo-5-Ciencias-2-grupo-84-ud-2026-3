@@ -30,11 +30,13 @@ public class TreeController {
 
             switch (option) {
                 case 1:
-                    view.showMessage("Datos Iniciales Insertados en Arbol B");
                     for (int key : data) {
+                        view.showMessage("\n\nDato a insertar: "+ key);
                         bTree.insert(key);
+                        view.drawBTree(bTree.root);
                     }
                     view.drawBTree(bTree.root);
+                    view.showMessage("Datos Iniciales Insertados en Arbol B");
                     break;
                 
                 case 2:
@@ -55,24 +57,27 @@ public class TreeController {
                     view.drawBTree(bTree.root);
                     break;
                 case 5:
-                    view.showMessage("Datos Iniciales Insertados en Arbol B+");
-                    for (int key : data) {
+                                        for (int key : data) {
+                        view.showMessage("\n\nDato a insertar: "+ key);
                         bPlusTree.insert(key);
+                        view.drawBPlusTree(bPlusTree.root);
                     }
                     view.drawBPlusTree(bPlusTree.root);
+                    view.showMessage("Datos Iniciales Insertados en Arbol B+");
+                    break;
                 case 6:
                     int insertBPlus = view.getIntInput("ingrese el valor a "
                             + "insertar en b+: ");
                     bPlusTree.insert(insertBPlus);
                     view.showMessage("dato insertado con exito.");
-                    view.drawBTree(bTree.root);
+                    view.drawBPlusTree(bPlusTree.root);
                     break;
                 case 7:
                     int deleteBPlus = view.getIntInput("ingrese el valor a "
                             + "eliminar en b+: ");
                     bPlusTree.delete(deleteBPlus);
                     view.showMessage("proceso de eliminacion finalizado.");
-                    view.drawBTree(bTree.root);
+                    view.drawBPlusTree(bPlusTree.root);
                     break;
                 case 8:
                     view.drawBPlusTree(bPlusTree.root);
